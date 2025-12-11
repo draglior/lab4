@@ -173,10 +173,6 @@ fprintf('5) Start.\n')
 fprintf('Frequency: %.2f Hz\n', signal_frequency);
 fprintf('Amplitude: %.4f\n', peak_amplitude);
 
-%{ 
-    Add your code here
-%}
-
 fprintf('5) Done.\n')
 
 % 5.1) Define function

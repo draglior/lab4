@@ -49,15 +49,9 @@ void dac_initialize()
 
 uint16_t dac_convert_milli_volt(uint16_t milliVolt)
 {
-    uint32_t value = milliVolt * 2; //1mV = 2 DAC counts
-    
-    if (value> 4095)
-        value = 4095;
-    
-    return (uint16_t)value;
+    if (milliVolt > 4095) milliVolt = 4095;
+    return milliVolt;
 }
-
-//cmd = (0b0011 << 12) | dac_convert_milli_volt(2500);
 
 void dac_send(uint16_t cmd, uint32_t interrupt_counter)
 {

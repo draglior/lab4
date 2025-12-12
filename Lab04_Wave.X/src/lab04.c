@@ -24,20 +24,22 @@ volatile float phase_inc = 0.0f;
 #define TCKPS_8   0x01
 #define TCKPS_64  0x02
 #define TCKPS_256 0x03
+
 #define F_SIGNAL 10.0f
-#define F_SAMPLE 1000.0f
-#define V_MIN 0.5f
-#define V_MAX 2.0f //max is 2.4V
+#define F_SAMPLE 300.0f
+#define V_MIN 1.0f
+#define V_MAX 3.0f
+#define TWO_PI 6.283185307f
 
 void timer_initialize(void)
 {
     T3CONbits.TON = 0;
 
-    T3CONbits.TCS = 0;        // INTERNAL clock (this is the key fix)
-    T3CONbits.TCKPS = 0b00;   // 1:1 prescaler
+    T3CONbits.TCS = 0; 
+    T3CONbits.TCKPS = 0b00;
 
     TMR3 = 0;
-    PR3 = (uint16_t)(FCY / F_SAMPLE - 1);   // with FCY=12.8MHz and F_SAMPLE=1000 -> 12799
+    PR3 = 12800000 / F_SAMPLE - 1;
 
     IFS0bits.T3IF = 0;
     IPC2bits.T3IP = 1;
@@ -45,13 +47,6 @@ void timer_initialize(void)
 
     T3CONbits.TON = 1;
 }
-
-
-/*
- * main loop
- */
-
-#define TWO_PI 6.283185307f
 
 void __attribute__((__interrupt__, auto_psv)) _T3Interrupt(void)
 {
@@ -64,7 +59,7 @@ void __attribute__((__interrupt__, auto_psv)) _T3Interrupt(void)
 
     uint16_t vout_mV = (uint16_t)(vout * 1000.0f);
     uint16_t code = dac_convert_milli_volt(vout_mV) & 0x0FFF;
-    uint16_t cmd  = (0b0011 << 12) | code;   // typical: write + gain + active (matches your comment)
+    uint16_t cmd  = 0x1000 | code;
     dac_send(cmd);
 
     phase += phase_inc;

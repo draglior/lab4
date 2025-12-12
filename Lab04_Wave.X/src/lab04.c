@@ -16,10 +16,6 @@
 volatile float phase = 0.0f;
 volatile float phase_inc = 0.0f;
 
-/*
- * Timer code
- */
-
 #define TCKPS_1   0x00
 #define TCKPS_8   0x01
 #define TCKPS_64  0x02
@@ -36,10 +32,10 @@ void timer_initialize(void)
     T3CONbits.TON = 0;
 
     T3CONbits.TCS = 0; 
-    T3CONbits.TCKPS = 0b00;
+    T3CONbits.TCKPS = TCKPS_1;
 
     TMR3 = 0;
-    PR3 = 12800000 / F_SAMPLE - 1;
+    PR3 = (12800000 / F_SAMPLE) - 1; //ticks for 300 samples per second
 
     IFS0bits.T3IF = 0;
     IPC2bits.T3IP = 1;
@@ -52,18 +48,18 @@ void __attribute__((__interrupt__, auto_psv)) _T3Interrupt(void)
 {
     IFS0bits.T3IF = 0;
 
-    float amplitude = (V_MAX - V_MIN) / 2.0f;
-    float offset    = (V_MAX + V_MIN) / 2.0f;
+    float amplitude = (V_MAX - V_MIN) / 2.0f; // amplitude +- the offset value
+    float offset    = (V_MAX + V_MIN) / 2.0f; //mid point of the wave, since controller cant do <0
 
     float vout = amplitude * sinf(phase) + offset;
 
-    uint16_t vout_mV = (uint16_t)(vout * 1000.0f);
-    uint16_t code = dac_convert_milli_volt(vout_mV) & 0x0FFF;
-    uint16_t cmd  = 0x1000 | code;
+    uint16_t vout_mV = vout * 1000.0;
+    uint16_t analogValue = dac_convert_milli_volt(vout_mV);
+    uint16_t cmd  = 0b0101000000000000 | analogValue; //add the config bits
     dac_send(cmd);
 
     phase += phase_inc;
-    if (phase >= TWO_PI) phase -= TWO_PI;
+    if (phase >= TWO_PI) phase -= TWO_PI; //periodic after 2pi
 
     TOGGLELED(LED1_PORT);
 }
@@ -74,7 +70,7 @@ void main_loop(void)
     lcd_locate(0, 1);
     lcd_printf("Group: 5");
 
-    phase_inc = TWO_PI * (F_SIGNAL / F_SAMPLE);
+    phase_inc = TWO_PI * (F_SIGNAL / F_SAMPLE); //increment step value
 
     while (TRUE)
     {

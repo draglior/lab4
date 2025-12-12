@@ -53,7 +53,7 @@ uint16_t dac_convert_milli_volt(uint16_t milliVolt)
     return milliVolt;
 }
 
-void dac_send(uint16_t cmd, uint32_t interrupt_counter)
+void dac_send(uint16_t cmd)
 {
     uint16_t i;
     DAC_CS_PORT = 0;

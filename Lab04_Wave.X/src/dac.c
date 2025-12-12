@@ -47,14 +47,14 @@ void dac_initialize()
 
 }
 
-void dac_convert_milli_volt(uint16_t milliVolt)
+uint16_t dac_convert_milli_volt(uint16_t milliVolt)
 {
     uint32_t value = milliVolt * 2; //1mV = 2 DAC counts
     
     if (value> 4095)
         value = 4095;
     
-    return value;
+    return (uint16_t)value;
 }
 
 //cmd = (0b0011 << 12) | dac_convert_milli_volt(2500);
@@ -63,13 +63,12 @@ void dac_send(uint16_t cmd, uint32_t interrupt_counter)
 {
     uint16_t i;
     uint32_t start;
-    
     DAC_CS_PORT = 0;
     Nop();
         
     for (i = 0; i < 16; i++)
         {
-        if (cmd & 0b1000000000000000)
+        if (cmd & 0x8000)
             DAC_SDI_PORT = 1;
         else
             DAC_SDI_PORT = 0;
@@ -85,8 +84,7 @@ void dac_send(uint16_t cmd, uint32_t interrupt_counter)
         Nop();
 
         DAC_LDAC_PORT = 0;
-        Nop(); Nop();
+        Nop();
+        Nop();
         DAC_LDAC_PORT = 1;
-        start = interrupt_counter;
-        while ((interrupt_counter - start) < 3);
 }

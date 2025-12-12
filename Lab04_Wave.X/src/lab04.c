@@ -13,8 +13,8 @@
 #include "dac.h"
 
 // signal parameter
-
-volatile uint32_t interrupt_counter = 0;
+volatile float phase = 0.0f;
+volatile float phase_inc = 0.0f;
 
 /*
  * Timer code
@@ -24,54 +24,65 @@ volatile uint32_t interrupt_counter = 0;
 #define TCKPS_8   0x01
 #define TCKPS_64  0x02
 #define TCKPS_256 0x03
+#define F_SIGNAL 10.0f
+#define F_SAMPLE 1000.0f
+#define V_MIN 0.5f
+#define V_MAX 2.0f //max is 2.4V
 
-void timer_initialize()
+void timer_initialize(void)
 {
-    __builtin_write_OSCCONL(OSCCONL | 2);
-    
-    CLEARBIT(T3CONbits.TON); 
-    SETBIT(T3CONbits.TCS); 
-    T3CONbits.TCKPS = 0b00;
-    T3CONbits.TCS=1; //external 32kHz
+    T3CONbits.TON = 0;
+
+    T3CONbits.TCS = 0;        // INTERNAL clock (this is the key fix)
+    T3CONbits.TCKPS = 0b00;   // 1:1 prescaler
+
     TMR3 = 0;
-    PR3 = 31; //32 ticks = 1 ms (32768/1000)
+    PR3 = (uint16_t)(FCY / F_SAMPLE - 1);   // with FCY=12.8MHz and F_SAMPLE=1000 -> 12799
 
     IFS0bits.T3IF = 0;
-    IPC2bits.T3IP = 0x01;
-    SETBIT(IEC0bits.T3IE);
-    SETBIT(T3CONbits.TON);
+    IPC2bits.T3IP = 1;
+    IEC0bits.T3IE = 1;
+
+    T3CONbits.TON = 1;
 }
+
 
 /*
  * main loop
  */
 
+#define TWO_PI 6.283185307f
+
 void __attribute__((__interrupt__, auto_psv)) _T3Interrupt(void)
 {
     IFS0bits.T3IF = 0;
-    interrupt_counter++;
+
+    float amplitude = (V_MAX - V_MIN) / 2.0f;
+    float offset    = (V_MAX + V_MIN) / 2.0f;
+
+    float vout = amplitude * sinf(phase) + offset;
+
+    uint16_t vout_mV = (uint16_t)(vout * 1000.0f);
+    uint16_t code = dac_convert_milli_volt(vout_mV) & 0x0FFF;
+    uint16_t cmd  = (0b0011 << 12) | code;   // typical: write + gain + active (matches your comment)
+    dac_send(cmd);
+
+    phase += phase_inc;
+    if (phase >= TWO_PI) phase -= TWO_PI;
+
+    TOGGLELED(LED1_PORT);
 }
 
-void main_loop()
-{   
-    uint16_t i;
-    uint16_t t;
-    uint32_t cmd;
-    
-    // print assignment information
+void main_loop(void)
+{
     lcd_printf("Lab04: Wave");
     lcd_locate(0, 1);
     lcd_printf("Group: 5");
-    
-    while(TRUE) {
-        lcd_locate(0, 3);
-        lcd_printf(" value: %u", interrupt_counter);
-        
-        for (t = 0; t < 30; t++)
-        {
 
-            dac_send(2*sin(2*3.142*t), interrupt_counter);
-        }
+    phase_inc = TWO_PI * (F_SIGNAL / F_SAMPLE);
 
-        }
+    while (TRUE)
+    {
+        // idle; ISR runs the waveform
+    }
 }

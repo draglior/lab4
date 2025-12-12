@@ -49,20 +49,19 @@ void dac_initialize()
 
 uint16_t dac_convert_milli_volt(uint16_t milliVolt)
 {
-    if (milliVolt > 4095) milliVolt = 4095;
+    if (milliVolt > 4095) milliVolt = 4095; //Vout = (AnalogVal / 4096) * 4096(Vref)
     return milliVolt;
 }
 
 void dac_send(uint16_t cmd, uint32_t interrupt_counter)
 {
     uint16_t i;
-    uint32_t start;
     DAC_CS_PORT = 0;
     Nop();
         
     for (i = 0; i < 16; i++)
         {
-        if (cmd & 0x8000)
+        if (cmd & 0b1000000000000000)
             DAC_SDI_PORT = 1;
         else
             DAC_SDI_PORT = 0;
